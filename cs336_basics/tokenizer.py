@@ -22,6 +22,9 @@ class Tokenizer:
         self.token_to_id = {}
         for id, token in vocab.items():
             self.token_to_id[token] = id
+        self.merges_ranks = {}
+        for  i, (a, b) in enumerate(merges):
+            self.merges_ranks[(a, b)] = i
 
     def encode(self, text: str) -> list[int]:
         """
@@ -68,20 +71,49 @@ class Tokenizer:
         # for token in tokens:
         #     seq_list.append([bytes([b]) for b in token.encode("utf-8")])
         # print(seq_list)
-        for merge in self.merges:
+        while True:
+            best_rank = float("inf")
+            best_pair = None
+            for seq in seq_list:
+                for i in range(len(seq) - 1):
+                    pair = (seq[i], seq[i+1])
+                    if pair in self.merges_ranks:
+                        rank = self.merges_ranks[pair]
+                        if rank < best_rank:
+                            best_rank = rank
+                            best_pair = pair
+            
+            if best_pair is None:
+                break
+
             new_seq_list = []
-            for token in seq_list:
+            for seq in seq_list:
                 new_seq = []
                 i = 0
-                while i < len(token):
-                    if i != len(token) - 1 and token[i] == merge[0] and token[i+1] == merge[1]:
-                        new_seq.append(merge[0] + merge[1])
+                while i < len(seq):
+                    if i != len(seq) - 1 and seq[i] == best_pair[0] and seq[i+1] == best_pair[1]:
+                        new_seq.append(best_pair[0] + best_pair[1])
                         i += 2
                     else:
-                        new_seq.append(token[i])
+                        new_seq.append(seq[i])
                         i += 1
                 new_seq_list.append(new_seq)
             seq_list = new_seq_list
+
+        # for merge in self.merges:
+        #     new_seq_list = []
+        #     for token in seq_list:
+        #         new_seq = []
+        #         i = 0
+        #         while i < len(token):
+        #             if i != len(token) - 1 and token[i] == merge[0] and token[i+1] == merge[1]:
+        #                 new_seq.append(merge[0] + merge[1])
+        #                 i += 2
+        #             else:
+        #                 new_seq.append(token[i])
+        #                 i += 1
+        #         new_seq_list.append(new_seq)
+        #     seq_list = new_seq_list
         res = []
         for token in seq_list:
             for b in token:
